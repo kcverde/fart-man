@@ -21,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kcverde.fartman.game.GamePhase
@@ -29,6 +31,7 @@ import com.kcverde.fartman.ui.screens.GameOverScreen
 import com.kcverde.fartman.ui.screens.PassingScreen
 import com.kcverde.fartman.ui.screens.SetupScreen
 import com.kcverde.fartman.ui.theme.extendedColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -40,11 +43,24 @@ fun MainScreen(viewModel: FartManViewModel, modifier: Modifier = Modifier) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val history by viewModel.history.collectAsStateWithLifecycle()
 
+  val haptics = LocalHapticFeedback.current
+
+  // Detonation gets its own buzz; the per-guess one fires from shakeEvents.
+  LaunchedEffect(state.phase) {
+    if (state.phase == GamePhase.DEFEAT) {
+      repeat(DETONATION_BUZZES) {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        delay(DETONATION_BUZZ_GAP_MILLIS)
+      }
+    }
+  }
+
   val shakeOffset = remember { Animatable(0f) }
   LaunchedEffect(viewModel) {
     // collectLatest so a fresh wrong guess restarts the rumble rather than
     // queueing behind the one still playing.
     viewModel.shakeEvents.collectLatest {
+      haptics.performHapticFeedback(HapticFeedbackType.LongPress)
       repeat(SHAKE_CYCLES) {
         shakeOffset.animateTo(SHAKE_DISTANCE, tween(SHAKE_STEP_MILLIS, easing = LinearEasing))
         shakeOffset.animateTo(-SHAKE_DISTANCE, tween(SHAKE_STEP_MILLIS, easing = LinearEasing))
@@ -118,3 +134,5 @@ private const val SHAKE_CYCLES = 3
 private const val SHAKE_DISTANCE = 25f
 private const val SHAKE_STEP_MILLIS = 50
 private const val CROSSFADE_MILLIS = 300
+private const val DETONATION_BUZZES = 3
+private const val DETONATION_BUZZ_GAP_MILLIS = 90L

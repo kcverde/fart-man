@@ -1,12 +1,15 @@
 package com.kcverde.fartman.ui
 
+import androidx.lifecycle.SavedStateHandle
 import com.kcverde.fartman.data.GameRepository
+import com.kcverde.fartman.data.InMemorySettingsStore
 import com.kcverde.fartman.game.GamePhase
 import com.kcverde.fartman.game.GameRules
 import com.kcverde.fartman.testing.FakeGameDao
 import com.kcverde.fartman.testing.MainDispatcherRule
 import com.kcverde.fartman.testing.RecordingSoundPlayer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -26,13 +29,15 @@ class FartManViewModelTest {
 
   private val dao = FakeGameDao()
   private val sound = RecordingSoundPlayer()
+  private val settings = InMemorySettingsStore()
+  private val savedState = SavedStateHandle()
   private lateinit var viewModel: FartManViewModel
 
   // Constructed here rather than in a field initializer, which would run before
   // the rule installs the test main dispatcher.
   @Before
   fun setUp() {
-    viewModel = FartManViewModel(GameRepository(dao), sound)
+    viewModel = FartManViewModel(GameRepository(dao), settings, sound, savedState)
   }
 
   private val state
@@ -259,5 +264,57 @@ class FartManViewModelTest {
     viewModel.playAgain()
 
     assertFalse("the mute setting should outlast the round", state.soundEnabled)
+  }
+
+  @Test
+  fun `muting is written to storage and reloaded on the next launch`() = runTest(dispatcher) {
+    viewModel.toggleSound()
+    assertFalse(settings.soundEnabled.first())
+
+    // A brand new ViewModel, as after the process is killed and relaunched.
+    val relaunched = FartManViewModel(GameRepository(dao), settings, sound, SavedStateHandle())
+
+    assertFalse(relaunched.uiState.value.soundEnabled)
+    assertTrue(sound.isMuted)
+  }
+
+  // --- Surviving process death ---------------------------------------------
+
+  @Test
+  fun `a round in progress is restored from saved state`() {
+    viewModel.updateCreatorName("Ada")
+    viewModel.updateGuesserName("Bob")
+    playRound("METHANE", hint = "swamp gas")
+    listOf('E', 'Z').forEach(viewModel::guessLetter)
+
+    // Same saved state, fresh ViewModel: the process was killed mid-round.
+    val restored = FartManViewModel(GameRepository(dao), settings, sound, savedState)
+    val state = restored.uiState.value
+
+    assertEquals(GamePhase.ACTIVE, state.phase)
+    assertEquals("METHANE", state.secretWord)
+    assertEquals("swamp gas", state.hint)
+    assertEquals("Ada", state.creatorName)
+    assertEquals("Bob", state.guesserName)
+    assertEquals(setOf('E', 'Z'), state.guessedLetters)
+    assertEquals(1, state.incorrectCount)
+  }
+
+  @Test
+  fun `a restored round can be played to a finish`() {
+    playRound("GAS")
+    viewModel.guessLetter('G')
+
+    val restored = FartManViewModel(GameRepository(dao), settings, sound, savedState)
+    "AS".forEach(restored::guessLetter)
+
+    assertEquals(GamePhase.VICTORY, restored.uiState.value.phase)
+  }
+
+  @Test
+  fun `an untouched saved state yields a fresh game`() {
+    val fresh = FartManViewModel(GameRepository(dao), settings, sound, SavedStateHandle())
+    assertEquals(GamePhase.SETUP, fresh.uiState.value.phase)
+    assertEquals("", fresh.uiState.value.secretWord)
   }
 }

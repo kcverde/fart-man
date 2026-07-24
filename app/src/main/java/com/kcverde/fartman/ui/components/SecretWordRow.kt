@@ -1,5 +1,8 @@
 package com.kcverde.fartman.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,9 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -63,26 +68,47 @@ fun SecretWordRow(word: String, guessedLetters: Set<Char>, modifier: Modifier = 
   ) {
     word.forEach { char ->
       val revealed = char in guessedLetters
+
+      // A letter drops in rather than blinking on, so a guess that fills three
+      // slots at once reads as one event.
+      val reveal by
+        animateFloatAsState(
+          targetValue = if (revealed) 1f else 0f,
+          animationSpec = tween(REVEAL_MILLIS),
+          label = "reveal",
+        )
+      val underlineColor by
+        animateColorAsState(
+          targetValue =
+            if (revealed) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outlineVariant,
+          animationSpec = tween(REVEAL_MILLIS),
+          label = "underline",
+        )
+
       Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.size(width = SLOT_WIDTH, height = SLOT_HEIGHT).clearAndSetSemantics {},
       ) {
         Text(
+          // Unrevealed slots never render the character at all, animated or
+          // otherwise, so it cannot be recovered from the screen.
           text = if (revealed) char.toString() else " ",
           fontSize = 26.sp,
           fontWeight = FontWeight.Bold,
           color = MaterialTheme.colorScheme.primary,
+          modifier =
+            Modifier.graphicsLayer {
+              alpha = reveal
+              val scale = REVEAL_START_SCALE + (1f - REVEAL_START_SCALE) * reveal
+              scaleX = scale
+              scaleY = scale
+            },
         )
         Spacer(modifier = Modifier.height(2.dp))
         Box(
           modifier =
-            Modifier.fillMaxWidth()
-              .height(4.dp)
-              .background(
-                if (revealed) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outlineVariant,
-                RoundedCornerShape(2.dp),
-              )
+            Modifier.fillMaxWidth().height(4.dp).background(underlineColor, RoundedCornerShape(2.dp))
         )
       }
     }
@@ -92,3 +118,5 @@ fun SecretWordRow(word: String, guessedLetters: Set<Char>, modifier: Modifier = 
 private val SLOT_WIDTH = 26.dp
 private val SLOT_HEIGHT = 46.dp
 private val SLOT_GAP = 8.dp
+private const val REVEAL_MILLIS = 260
+private const val REVEAL_START_SCALE = 0.5f

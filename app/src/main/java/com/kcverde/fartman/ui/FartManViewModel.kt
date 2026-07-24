@@ -1,14 +1,18 @@
 package com.kcverde.fartman.ui
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.kcverde.fartman.data.DataStoreSettings
 import com.kcverde.fartman.data.GameDatabase
 import com.kcverde.fartman.data.GameRecord
 import com.kcverde.fartman.data.GameRepository
+import com.kcverde.fartman.data.SettingsStore
 import com.kcverde.fartman.game.GamePhase
 import com.kcverde.fartman.game.GameRules
 import com.kcverde.fartman.game.GameUiState
@@ -19,19 +23,22 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class FartManViewModel(
   private val repository: GameRepository,
+  private val settings: SettingsStore,
   private val soundPlayer: SoundPlayer,
+  private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(GameUiState())
+  private val _uiState = MutableStateFlow(savedStateHandle.restoreRound())
   val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
   /**
-   * Fires when a guess is wrong, so the screen can rumble.
+   * Fires when a guess is wrong, so the screen can rumble and buzz.
    *
    * Buffered rather than suspending: a plain `MutableSharedFlow` makes `emit`
    * wait for a collector, which stalls the guess while the screen is in the
@@ -48,7 +55,13 @@ class FartManViewModel(
     )
 
   init {
-    soundPlayer.isMuted = !_uiState.value.soundEnabled
+    // The mute setting lives in storage, not in the saved round, so it applies
+    // to a cold start as well as a restored one.
+    viewModelScope.launch {
+      val enabled = settings.soundEnabled.first()
+      soundPlayer.isMuted = !enabled
+      update { it.copy(soundEnabled = enabled) }
+    }
   }
 
   // --- Setup ---------------------------------------------------------------
@@ -63,31 +76,28 @@ class FartManViewModel(
 
   /** Letters only, so the keyboard can always reach every character. */
   fun updateSecretWord(word: String) = update {
-    it.copy(
-      secretWord = word.filter(Char::isLetter).uppercase().take(GameRules.MAX_WORD_LENGTH)
-    )
+    it.copy(secretWord = word.filter(Char::isLetter).uppercase().take(GameRules.MAX_WORD_LENGTH))
   }
 
   fun updateHint(hint: String) = update { it.copy(hint = hint.take(GameRules.MAX_HINT_LENGTH)) }
 
-  fun toggleSound() = update {
-    val enabled = !it.soundEnabled
+  fun toggleSound() {
+    val enabled = !_uiState.value.soundEnabled
     soundPlayer.isMuted = !enabled
-    it.copy(soundEnabled = enabled)
+    update { it.copy(soundEnabled = enabled) }
+    viewModelScope.launch { settings.setSoundEnabled(enabled) }
   }
 
   fun startRound() {
     val state = _uiState.value
     if (state.phase != GamePhase.SETUP || !state.canStartRound) return
-    _uiState.value =
-      state.copy(phase = GamePhase.PASSING, guessedLetters = emptySet(), incorrectCount = 0)
+    update { it.copy(phase = GamePhase.PASSING, guessedLetters = emptySet(), incorrectCount = 0) }
     soundPlayer.playCorrectBubble()
   }
 
   fun startGuessing() {
-    val state = _uiState.value
-    if (state.phase != GamePhase.PASSING) return
-    _uiState.value = state.copy(phase = GamePhase.ACTIVE)
+    if (_uiState.value.phase != GamePhase.PASSING) return
+    update { it.copy(phase = GamePhase.ACTIVE) }
     soundPlayer.playRoundStart()
   }
 
@@ -107,7 +117,7 @@ class FartManViewModel(
       if (next.isWordComplete) {
         finish(next, won = true)
       } else {
-        _uiState.value = next
+        set(next)
         soundPlayer.playCorrectBubble()
       }
       return
@@ -118,7 +128,7 @@ class FartManViewModel(
     if (next.incorrectCount >= GameRules.MAX_INCORRECT) {
       finish(next, won = false)
     } else {
-      _uiState.value = next
+      set(next)
       soundPlayer.playIncorrectPuff()
     }
   }
@@ -127,7 +137,7 @@ class FartManViewModel(
    * Ends the round immediately.
    *
    * The old Give Up button dispatched `guessLetter('?')`, which merely added a
-   * single wrong guess, so it took six taps from full health to do anything.
+   * single wrong guess, so it took six presses from full health to do anything.
    */
   fun giveUp() {
     val state = _uiState.value
@@ -136,7 +146,7 @@ class FartManViewModel(
   }
 
   private fun finish(state: GameUiState, won: Boolean) {
-    _uiState.value = state.copy(phase = if (won) GamePhase.VICTORY else GamePhase.DEFEAT)
+    set(state.copy(phase = if (won) GamePhase.VICTORY else GamePhase.DEFEAT))
     if (won) soundPlayer.playVictoryDeflate() else soundPlayer.playMegaFartExplosion()
 
     viewModelScope.launch {
@@ -166,8 +176,17 @@ class FartManViewModel(
     viewModelScope.launch { repository.clearAll() }
   }
 
-  private inline fun update(transform: (GameUiState) -> GameUiState) {
-    _uiState.value = transform(_uiState.value)
+  // --- Plumbing ------------------------------------------------------------
+
+  private inline fun update(transform: (GameUiState) -> GameUiState) = set(transform(_uiState.value))
+
+  /**
+   * The single write path, so nothing can change the round without also
+   * recording it for process death.
+   */
+  private fun set(state: GameUiState) {
+    _uiState.value = state
+    savedStateHandle.saveRound(state)
   }
 
   override fun onCleared() {
@@ -182,9 +201,51 @@ class FartManViewModel(
         val app = context.applicationContext
         FartManViewModel(
           repository = GameRepository(GameDatabase.getDatabase(app).gameDao()),
+          settings = DataStoreSettings(app),
           soundPlayer = AndroidSoundPlayer(app),
+          savedStateHandle = createSavedStateHandle(),
         )
       }
     }
   }
+}
+
+// --- Saved state -----------------------------------------------------------
+// Stored as primitives rather than a Parcelable so GameUiState can stay in the
+// Android-free game package. soundEnabled is deliberately absent: it comes from
+// SettingsStore, which is durable rather than per-process.
+
+private const val KEY_PHASE = "phase"
+private const val KEY_CREATOR = "creator"
+private const val KEY_GUESSER = "guesser"
+private const val KEY_WORD = "word"
+private const val KEY_HINT = "hint"
+private const val KEY_GUESSED = "guessed"
+private const val KEY_INCORRECT = "incorrect"
+private const val KEY_GAVE_UP = "gaveUp"
+
+private fun SavedStateHandle.saveRound(state: GameUiState) {
+  this[KEY_PHASE] = state.phase.name
+  this[KEY_CREATOR] = state.creatorName
+  this[KEY_GUESSER] = state.guesserName
+  this[KEY_WORD] = state.secretWord
+  this[KEY_HINT] = state.hint
+  this[KEY_GUESSED] = state.guessedLetters.joinToString(separator = "")
+  this[KEY_INCORRECT] = state.incorrectCount
+  this[KEY_GAVE_UP] = state.gaveUp
+}
+
+private fun SavedStateHandle.restoreRound(): GameUiState {
+  val phase = get<String>(KEY_PHASE)?.let(GamePhase::valueOf) ?: return GameUiState()
+  val default = GameUiState()
+  return GameUiState(
+    phase = phase,
+    creatorName = get<String>(KEY_CREATOR) ?: default.creatorName,
+    guesserName = get<String>(KEY_GUESSER) ?: default.guesserName,
+    secretWord = get<String>(KEY_WORD).orEmpty(),
+    hint = get<String>(KEY_HINT).orEmpty(),
+    guessedLetters = get<String>(KEY_GUESSED).orEmpty().toSet(),
+    incorrectCount = get<Int>(KEY_INCORRECT) ?: 0,
+    gaveUp = get<Boolean>(KEY_GAVE_UP) ?: false,
+  )
 }
