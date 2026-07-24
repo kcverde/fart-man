@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes the in-flight run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # AGP 9.x needs 17 or newer; 21 matches the JDK bundled with Android
+      # Studio, which is what the project is built with locally.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Caches ~/.gradle and checks the wrapper jar against Gradle's published
+      # checksums, so a tampered wrapper fails the build rather than running.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      # Runs the whole JVM suite -- game logic and screens alike -- with
+      # Roborazzi in verify mode, so it also diffs the eight rendered screens
+      # against the goldens committed under app/src/test/screenshots.
+      - name: Unit tests and screenshot verification
+        run: ./gradlew verifyRoborazziDebug
+
+      # R8 and resource shrinking only run for release, so this is the only
+      # thing that would catch a minification break.
+      - name: Release build
+        run: ./gradlew assembleRelease
+
+      # Without these a red build says "verify failed" and nothing else; the
+      # Roborazzi output holds the actual/expected/diff images.
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/outputs/roborazzi/
+          retention-days: 7
