@@ -1,3 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fart Man</string>
+    <string name="app_initial">F</string>
+    <string name="app_tagline">Pass &amp; Play Gaseous Word Game</string>
+
+    <!-- Sound toggle -->
+    <string name="sound_mute">Mute game sound</string>
+    <string name="sound_unmute">Unmute game sound</string>
+
+    <!-- Setup screen -->
+    <string name="setup_section_players">1. Enter Players</string>
+    <string name="setup_section_word">2. Set the Trap</string>
+    <string name="setup_creator_label">Word Creator Name</string>
+    <string name="setup_guesser_label">Guesser Name</string>
+    <string name="setup_secret_word_label">Secret Word (Letters Only)</string>
+    <string name="setup_hint_label">Optional Gas Hint</string>
+    <string name="setup_submit_empty">ENTER A WORD</string>
+    <string name="setup_submit_too_short">NEEDS AT LEAST %1$d LETTERS</string>
+    <string name="setup_submit_ready">LOCK WORD &amp; PASS PHONE</string>
+    <string name="setup_word_counter">%1$d / %2$d</string>
+
+    <!-- Match history -->
+    <string name="history_title">Historic Gas Records</string>
+    <string name="history_expand">Show match history</string>
+    <string name="history_collapse">Hide match history</string>
+    <string name="history_empty">No gaseous logs yet. Play a round to start your record.</string>
+    <string name="history_clear">Clear Logs</string>
+    <string name="history_matchup">%1$s vs %2$s</string>
+    <string name="history_detail">Word: %1$s • %2$s</string>
+    <string name="stat_plays">PLAYS</string>
+    <string name="stat_deflated">DEFLATED</string>
+    <string name="stat_farts">FARTS</string>
+    <string name="stat_win_rate">WIN RATE</string>
+    <string name="stat_win_rate_value">%1$d%%</string>
+    <string name="result_deflated">Deflated</string>
+    <string name="result_farted">Farted</string>
+
+    <!-- Pass-the-phone screen -->
+    <string name="passing_icon">Pass the phone</string>
+    <string name="passing_title">PASS PHONE!</string>
+    <string name="passing_handover">Hand the phone over to:</string>
+    <string name="passing_no_peeking">NO PEEKING AT THE SECRET WORD!</string>
+    <string name="passing_start">I AM %1$s, START GAME</string>
+
+    <!-- Active game -->
+    <string name="label_creator">CREATOR</string>
+    <string name="label_guesser">GUESSER</string>
+    <string name="badge_active">ACTIVE</string>
+    <string name="pressure_label">💨 Bloat Pressure Status</string>
+    <string name="hint_reveal">TAP TO REVEAL CREATOR HINT</string>
+    <string name="hint_shown">HINT: %1$s</string>
+    <string name="turn_status">%1$s\'s turn to guess</string>
+    <string name="give_up">Give Up</string>
+    <string name="give_up_title">Give up?</string>
+    <string name="give_up_message">Fart Man detonates immediately and %1$s takes the round.</string>
+    <string name="give_up_confirm">Yes, detonate</string>
+    <string name="give_up_cancel">Keep guessing</string>
+    <string name="fart_man_stage">Fart Man, bloat stage %1$d of %2$d</string>
+    <string name="fart_man_exploded">Fart Man has exploded into a gas cloud</string>
+    <string name="keyboard_label">Letter keyboard</string>
+    <string name="key_unguessed">Guess the letter %1$s</string>
+    <string name="key_correct">%1$s, correct</string>
+    <string name="key_incorrect">%1$s, not in the word</string>
+    <string name="blank_letter">blank</string>
+    <string name="secret_word_progress">Secret word: %1$s</string>
+
+    <plurals name="mistakes_remaining">
+        <item quantity="one">%1$d Mistake Left Until Detonation</item>
+        <item quantity="other">%1$d Mistakes Left Until Detonation</item>
+    </plurals>
+
+    <!-- Game over -->
+    <string name="victory_title">🎉 SAFE DEFLATION!</string>
+    <string name="defeat_title">💨 MEGA-FART EXPLOSION!</string>
+    <string name="victory_body_perfect">Flawless, %1$s! Not a single wrong letter. Fart Man deflated without so much as a squeak.</string>
+    <string name="defeat_body">Oh no! %1$s squeezed too hard, and Fart Man erupted into a giant gas cloud. %2$s wins this battle!</string>
+    <string name="defeat_body_gave_up">%1$s gave up, so Fart Man let it rip on purpose. %2$s wins this battle!</string>
+    <string name="secret_word_was">THE SECRET WORD WAS</string>
+    <string name="rematch_swap">SWAP ROLES &amp; REMATCH</string>
+    <string name="new_game_same_roles">NEW GAME (SAME ROLES)</string>
+
+    <plurals name="victory_body">
+        <item quantity="one">Nice work, %1$s! You cracked it with %2$d mistake. Fart Man deflated safely back to normal size.</item>
+        <item quantity="other">Nice work, %1$s! You cracked it with %2$d mistakes. Fart Man deflated safely back to normal size.</item>
+    </plurals>
 </resources>

@@ -5,24 +5,29 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [GameRecord::class], version = 2, exportSchema = false)
+@Database(entities = [GameRecord::class], version = 1, exportSchema = false)
 abstract class GameDatabase : RoomDatabase() {
-    abstract fun gameDao(): GameDao
+  abstract fun gameDao(): GameDao
 
-    companion object {
-        @Volatile
-        private var INSTANCE: GameDatabase? = null
+  companion object {
+    @Volatile private var instance: GameDatabase? = null
 
-        fun getDatabase(context: Context): GameDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    GameDatabase::class.java,
-                    "fartman_database"
-                ).fallbackToDestructiveMigration().build()
-                INSTANCE = instance
-                instance
-            }
+    fun getDatabase(context: Context): GameDatabase =
+      instance
+        ?: synchronized(this) {
+          instance
+            ?: Room.databaseBuilder(
+                context.applicationContext,
+                GameDatabase::class.java,
+                DATABASE_NAME,
+              )
+              // Match history is disposable: losing it on a schema change beats
+              // shipping a migration for a scoreboard.
+              .fallbackToDestructiveMigration(dropAllTables = true)
+              .build()
+              .also { instance = it }
         }
-    }
+
+    private const val DATABASE_NAME = "fartman_database"
+  }
 }

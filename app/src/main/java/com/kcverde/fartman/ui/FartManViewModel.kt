@@ -1,10 +1,17 @@
 package com.kcverde.fartman.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.kcverde.fartman.data.GameDatabase
 import com.kcverde.fartman.data.GameRecord
 import com.kcverde.fartman.data.GameRepository
+import com.kcverde.fartman.game.GamePhase
+import com.kcverde.fartman.game.GameRules
+import com.kcverde.fartman.game.GameUiState
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,200 +22,169 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class GamePhase {
-    SETUP,
-    PASSING,
-    ACTIVE,
-    VICTORY,
-    DEFEAT
-}
+class FartManViewModel(
+  private val repository: GameRepository,
+  private val soundPlayer: SoundPlayer,
+) : ViewModel() {
 
-class FartManViewModel(private val repository: GameRepository) : ViewModel() {
+  private val _uiState = MutableStateFlow(GameUiState())
+  val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
-    // Gameplay states
-    private val _gamePhase = MutableStateFlow(GamePhase.SETUP)
-    val gamePhase: StateFlow<GamePhase> = _gamePhase.asStateFlow()
+  /**
+   * Fires when a guess is wrong, so the screen can rumble.
+   *
+   * Buffered rather than suspending: a plain `MutableSharedFlow` makes `emit`
+   * wait for a collector, which stalls the guess while the screen is in the
+   * background.
+   */
+  private val _shakeEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+  val shakeEvents: SharedFlow<Unit> = _shakeEvents.asSharedFlow()
 
-    private val _creatorName = MutableStateFlow("Word Master")
-    val creatorName: StateFlow<String> = _creatorName.asStateFlow()
+  val history: StateFlow<List<GameRecord>> =
+    repository.history.stateIn(
+      scope = viewModelScope,
+      started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+      initialValue = emptyList(),
+    )
 
-    private val _guesserName = MutableStateFlow("Gassy Guesser")
-    val guesserName: StateFlow<String> = _guesserName.asStateFlow()
+  init {
+    soundPlayer.isMuted = !_uiState.value.soundEnabled
+  }
 
-    private val _secretWord = MutableStateFlow("")
-    val secretWord: StateFlow<String> = _secretWord.asStateFlow()
+  // --- Setup ---------------------------------------------------------------
 
-    private val _hintText = MutableStateFlow("")
-    val hintText: StateFlow<String> = _hintText.asStateFlow()
+  fun updateCreatorName(name: String) = update {
+    it.copy(creatorName = name.take(GameRules.MAX_NAME_LENGTH))
+  }
 
-    private val _guessedLetters = MutableStateFlow<Set<Char>>(emptySet())
-    val guessedLetters: StateFlow<Set<Char>> = _guessedLetters.asStateFlow()
+  fun updateGuesserName(name: String) = update {
+    it.copy(guesserName = name.take(GameRules.MAX_NAME_LENGTH))
+  }
 
-    private val _incorrectCount = MutableStateFlow(0)
-    val incorrectCount: StateFlow<Int> = _incorrectCount.asStateFlow()
+  /** Letters only, so the keyboard can always reach every character. */
+  fun updateSecretWord(word: String) = update {
+    it.copy(
+      secretWord = word.filter(Char::isLetter).uppercase().take(GameRules.MAX_WORD_LENGTH)
+    )
+  }
 
-    val maxIncorrect = 6 // 6 stages of bloating before explosion!
+  fun updateHint(hint: String) = update { it.copy(hint = hint.take(GameRules.MAX_HINT_LENGTH)) }
 
-    // Sound enabled setting state
-    private val _soundEnabled = MutableStateFlow(true)
-    val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
+  fun toggleSound() = update {
+    val enabled = !it.soundEnabled
+    soundPlayer.isMuted = !enabled
+    it.copy(soundEnabled = enabled)
+  }
 
-    init {
-        FartSoundPlayer.isMuted = !_soundEnabled.value
+  fun startRound() {
+    val state = _uiState.value
+    if (state.phase != GamePhase.SETUP || !state.canStartRound) return
+    _uiState.value =
+      state.copy(phase = GamePhase.PASSING, guessedLetters = emptySet(), incorrectCount = 0)
+    soundPlayer.playCorrectBubble()
+  }
+
+  fun startGuessing() {
+    val state = _uiState.value
+    if (state.phase != GamePhase.PASSING) return
+    _uiState.value = state.copy(phase = GamePhase.ACTIVE)
+    soundPlayer.playRoundStart()
+  }
+
+  // --- Playing -------------------------------------------------------------
+
+  fun guessLetter(letter: Char) {
+    val state = _uiState.value
+    val guess = letter.uppercaseChar()
+    if (state.phase != GamePhase.ACTIVE || !guess.isLetter() || guess in state.guessedLetters) {
+      return
     }
 
-    fun toggleSound() {
-        val nextVal = !_soundEnabled.value
-        _soundEnabled.value = nextVal
-        FartSoundPlayer.isMuted = !nextVal
+    val guessed = state.guessedLetters + guess
+
+    if (guess in state.secretWord) {
+      val next = state.copy(guessedLetters = guessed)
+      if (next.isWordComplete) {
+        finish(next, won = true)
+      } else {
+        _uiState.value = next
+        soundPlayer.playCorrectBubble()
+      }
+      return
     }
 
-    // Shake event flow (to trigger a rumble shake animation in UI on error)
-    private val _shakeEvent = MutableSharedFlow<Unit>()
-    val shakeEvent: SharedFlow<Unit> = _shakeEvent.asSharedFlow()
+    val next = state.copy(guessedLetters = guessed, incorrectCount = state.incorrectCount + 1)
+    _shakeEvents.tryEmit(Unit)
+    if (next.incorrectCount >= GameRules.MAX_INCORRECT) {
+      finish(next, won = false)
+    } else {
+      _uiState.value = next
+      soundPlayer.playIncorrectPuff()
+    }
+  }
 
-    // History Flow from Room DB
-    val gameHistory: StateFlow<List<GameRecord>> = repository.history
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+  /**
+   * Ends the round immediately.
+   *
+   * The old Give Up button dispatched `guessLetter('?')`, which merely added a
+   * single wrong guess, so it took six taps from full health to do anything.
+   */
+  fun giveUp() {
+    val state = _uiState.value
+    if (state.phase != GamePhase.ACTIVE) return
+    finish(state.copy(incorrectCount = GameRules.MAX_INCORRECT, gaveUp = true), won = false)
+  }
+
+  private fun finish(state: GameUiState, won: Boolean) {
+    _uiState.value = state.copy(phase = if (won) GamePhase.VICTORY else GamePhase.DEFEAT)
+    if (won) soundPlayer.playVictoryDeflate() else soundPlayer.playMegaFartExplosion()
+
+    viewModelScope.launch {
+      repository.insert(
+        GameRecord(
+          creatorName = state.creatorName.ifBlank { GameRules.DEFAULT_CREATOR_NAME },
+          guesserName = state.guesserName.ifBlank { GameRules.DEFAULT_GUESSER_NAME },
+          secretWord = state.secretWord,
+          isWin = won,
+          incorrectGuesses = state.incorrectCount,
+          hintString = state.hint,
         )
-
-    fun updateCreatorName(name: String) {
-        _creatorName.value = name.take(15)
+      )
     }
+  }
 
-    fun updateGuesserName(name: String) {
-        _guesserName.value = name.take(15)
+  // --- Between rounds ------------------------------------------------------
+
+  fun playAgain() = update { it.clearedForNewRound() }
+
+  /** Same two people, opposite chairs. */
+  fun swapRolesAndPlayAgain() = update {
+    it.clearedForNewRound().copy(creatorName = it.guesserName, guesserName = it.creatorName)
+  }
+
+  fun clearHistory() {
+    viewModelScope.launch { repository.clearAll() }
+  }
+
+  private inline fun update(transform: (GameUiState) -> GameUiState) {
+    _uiState.value = transform(_uiState.value)
+  }
+
+  override fun onCleared() {
+    soundPlayer.release()
+  }
+
+  companion object {
+    private const val STOP_TIMEOUT_MILLIS = 5_000L
+
+    fun factory(context: Context): ViewModelProvider.Factory = viewModelFactory {
+      initializer {
+        val app = context.applicationContext
+        FartManViewModel(
+          repository = GameRepository(GameDatabase.getDatabase(app).gameDao()),
+          soundPlayer = AndroidSoundPlayer(app),
+        )
+      }
     }
-
-    fun updateSecretWord(word: String) {
-        // Only accept letters, ignore numbers/special chars to prevent impossible games
-        _secretWord.value = word.filter { it.isLetter() }.uppercase()
-    }
-
-    fun updateHintText(hint: String) {
-        _hintText.value = hint.take(50)
-    }
-
-    // Submit setup parameters and proceed to Pass Phone phase
-    fun submitSetup() {
-        if (_secretWord.value.isNotBlank()) {
-            _guessedLetters.value = emptySet()
-            _incorrectCount.value = 0
-            _gamePhase.value = GamePhase.PASSING
-            FartSoundPlayer.playCorrectBubble() // satisfying feedback on lock
-        }
-    }
-
-    // Pass was accepted, player starts guessing
-    fun startGuessing() {
-        if (_gamePhase.value == GamePhase.PASSING) {
-            _gamePhase.value = GamePhase.ACTIVE
-            FartSoundPlayer.playTada() // Tada sound as guessing starts
-        }
-    }
-
-    // Action of guessing a letter
-    fun guessLetter(letter: Char) {
-        val uppercaseLetter = letter.uppercaseChar()
-        if (_gamePhase.value != GamePhase.ACTIVE || _guessedLetters.value.contains(uppercaseLetter)) {
-            return
-        }
-
-        // Add to guessed list
-        _guessedLetters.value = _guessedLetters.value + uppercaseLetter
-
-        // Check if letter exists in secret word
-        if (!_secretWord.value.contains(uppercaseLetter)) {
-            // Incorrect guess!
-            val newIncorrectCount = _incorrectCount.value + 1
-            _incorrectCount.value = newIncorrectCount
-
-            // Trigger physical rumble shake visual effect
-            viewModelScope.launch {
-                _shakeEvent.emit(Unit)
-            }
-
-            // Check if game over (farted!)
-            if (newIncorrectCount >= maxIncorrect) {
-                gameOver(isWin = false)
-            } else {
-                FartSoundPlayer.playIncorrectPuff() // play sub-terminal incorrect puff sound
-            }
-        } else {
-            // Correct guess! Check if entire word has been uncovered
-            val allLettersGuessed = _secretWord.value.all { _guessedLetters.value.contains(it) }
-            if (allLettersGuessed) {
-                gameOver(isWin = true)
-            } else {
-                FartSoundPlayer.playCorrectBubble() // correct bubble sound!
-            }
-        }
-    }
-
-    private fun gameOver(isWin: Boolean) {
-        _gamePhase.value = if (isWin) GamePhase.VICTORY else GamePhase.DEFEAT
-        
-        if (isWin) {
-            FartSoundPlayer.playVictoryDeflate()
-        } else {
-            FartSoundPlayer.playMegaFartExplosion()
-        }
-
-        // Save result to Room database
-        viewModelScope.launch {
-            val record = GameRecord(
-                creatorName = _creatorName.value.ifBlank { "Word Master" },
-                guesserName = _guesserName.value.ifBlank { "Gassy Guesser" },
-                secretWord = _secretWord.value,
-                isWin = isWin,
-                incorrectGuesses = _incorrectCount.value,
-                hintString = _hintText.value
-            )
-            repository.insert(record)
-        }
-    }
-
-    // Return to setup for a new game
-    fun resetToSetup() {
-        _secretWord.value = ""
-        _hintText.value = ""
-        _guessedLetters.value = emptySet()
-        _incorrectCount.value = 0
-        _gamePhase.value = GamePhase.SETUP
-        FartSoundPlayer.playCorrectBubble()
-    }
-
-    fun quickPlayAgain() {
-        // Swap creator and guesser for quick rematch!
-        val oldCreator = _creatorName.value
-        val oldGuesser = _guesserName.value
-        _creatorName.value = oldGuesser
-        _guesserName.value = oldCreator
-
-        _secretWord.value = ""
-        _hintText.value = ""
-        _guessedLetters.value = emptySet()
-        _incorrectCount.value = 0
-        _gamePhase.value = GamePhase.SETUP
-        FartSoundPlayer.playCorrectBubble()
-    }
-
-    fun clearHistory() {
-        viewModelScope.launch {
-            repository.clearAll()
-        }
-    }
-}
-
-class FartManViewModelFactory(private val repository: GameRepository) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(FartManViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return FartManViewModel(repository) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
+  }
 }
