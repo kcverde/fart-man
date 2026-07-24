@@ -21,8 +21,8 @@ plays, wins, losses, and win rate on the setup screen.
 
 ## Building
 
-Requirements: **JDK 17** and **Android SDK 36**. Both ship with a current
-Android Studio; the Gradle wrapper pins Gradle 9.3.1 to match AGP 9.1.1.
+Requirements: **JDK 17** and **Android SDK 37**. Both ship with a current
+Android Studio; the Gradle wrapper pins Gradle 9.5.0 to match AGP 9.3.1.
 
 ```bash
 ./gradlew assembleDebug
