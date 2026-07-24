@@ -1,6 +1,0 @@
-{
-  "name": "Fart Man",
-  "description": "A playful and fun pass-and-play hangman game where incorrect guesses cause Fart Man to bloat up until he lets out a hilarious mega-fart!",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

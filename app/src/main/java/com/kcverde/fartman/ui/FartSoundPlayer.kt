@@ -1,10 +1,10 @@
-package com.example.ui
+package com.kcverde.fartman.ui
 
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.util.Log
-import com.example.R
+import com.kcverde.fartman.R
 
 object FartSoundPlayer {
     private const val TAG = "FartSoundPlayer"

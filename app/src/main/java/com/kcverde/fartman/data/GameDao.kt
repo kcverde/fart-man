@@ -1,4 +1,4 @@
-package com.example.data
+package com.kcverde.fartman.data
 
 import androidx.room.Dao
 import androidx.room.Insert

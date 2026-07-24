@@ -1,4 +1,4 @@
-package com.example
+package com.kcverde.fartman
 
 import org.junit.Assert.*
 import org.junit.Test

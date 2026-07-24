@@ -1,4 +1,4 @@
-package com.example
+package com.kcverde.fartman
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,13 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
-import com.example.data.GameDatabase
-import com.example.data.GameRepository
-import com.example.ui.FartManViewModel
-import com.example.ui.FartManViewModelFactory
-import com.example.ui.FartSoundPlayer
-import com.example.ui.MainScreen
-import com.example.ui.theme.MyApplicationTheme
+import com.kcverde.fartman.data.GameDatabase
+import com.kcverde.fartman.data.GameRepository
+import com.kcverde.fartman.ui.FartManViewModel
+import com.kcverde.fartman.ui.FartManViewModelFactory
+import com.kcverde.fartman.ui.FartSoundPlayer
+import com.kcverde.fartman.ui.MainScreen
+import com.kcverde.fartman.ui.theme.FartManTheme
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
     val viewModel = ViewModelProvider(this, factory)[FartManViewModel::class.java]
 
     setContent {
-      MyApplicationTheme {
+      FartManTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
           MainScreen(
             viewModel = viewModel,

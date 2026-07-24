@@ -1,4 +1,4 @@
-package com.example.data
+package com.kcverde.fartman.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

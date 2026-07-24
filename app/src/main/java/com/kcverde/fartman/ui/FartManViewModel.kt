@@ -1,10 +1,10 @@
-package com.example.ui
+package com.kcverde.fartman.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.GameRecord
-import com.example.data.GameRepository
+import com.kcverde.fartman.data.GameRecord
+import com.kcverde.fartman.data.GameRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow

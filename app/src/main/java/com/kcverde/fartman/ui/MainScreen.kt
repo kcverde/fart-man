@@ -1,4 +1,4 @@
-package com.example.ui
+package com.kcverde.fartman.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.GameRecord
+import com.kcverde.fartman.data.GameRecord
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
