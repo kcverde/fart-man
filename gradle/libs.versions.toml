@@ -4,10 +4,12 @@ kotlin = "2.2.10"
 googleDevtoolsKsp = "2.3.5"
 roborazzi = "1.59.0"
 
-coreKtx = "1.19.0"
+# core-ktx 1.19.0 and lifecycle 2.11.0 require compileSdk 37. Raise both when
+# the project moves to 37; AGP 9.1.1 supports it.
+coreKtx = "1.18.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
-lifecycle = "2.11.0"
+lifecycle = "2.10.0"
 room = "2.8.4"
 kotlinxCoroutines = "1.10.2"
 

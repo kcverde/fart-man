@@ -6,21 +6,34 @@ import com.kcverde.fartman.game.GameRules
 import com.kcverde.fartman.testing.FakeGameDao
 import com.kcverde.fartman.testing.MainDispatcherRule
 import com.kcverde.fartman.testing.RecordingSoundPlayer
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class FartManViewModelTest {
 
-  @get:Rule val mainDispatcherRule = MainDispatcherRule()
+  private val dispatcher = UnconfinedTestDispatcher()
+
+  @get:Rule val mainDispatcherRule = MainDispatcherRule(dispatcher)
 
   private val dao = FakeGameDao()
   private val sound = RecordingSoundPlayer()
-  private val viewModel = FartManViewModel(GameRepository(dao), sound)
+  private lateinit var viewModel: FartManViewModel
+
+  // Constructed here rather than in a field initializer, which would run before
+  // the rule installs the test main dispatcher.
+  @Before
+  fun setUp() {
+    viewModel = FartManViewModel(GameRepository(dao), sound)
+  }
 
   private val state
     get() = viewModel.uiState.value
@@ -153,7 +166,7 @@ class FartManViewModelTest {
   }
 
   @Test
-  fun `a wrong guess signals a shake`() = runTest {
+  fun `a wrong guess signals a shake`() = runTest(dispatcher) {
     val shakes = mutableListOf<Unit>()
     backgroundScope.launch { viewModel.shakeEvents.collect { shakes += it } }
 
@@ -219,7 +232,7 @@ class FartManViewModelTest {
   }
 
   @Test
-  fun `history can be cleared`() = runTest {
+  fun `history can be cleared`() = runTest(dispatcher) {
     playRound("GAS")
     viewModel.giveUp()
     assertEquals(1, dao.saved.size)

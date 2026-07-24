@@ -191,20 +191,23 @@ fun ActiveGameScreen(
 
 @Composable
 private fun PlayerBanner(state: GameUiState, onToggleSound: () -> Unit) {
+  // The two names flex and the centre group keeps its intrinsic width. With
+  // SpaceBetween the row over-constrained itself on narrow screens and the
+  // sound button drew on top of the ACTIVE badge.
   Row(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-    horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
     PlayerLabel(
       role = stringResource(R.string.label_creator),
       name = state.creatorName,
       alignment = Alignment.Start,
+      modifier = Modifier.weight(1f),
     )
 
     Row(
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       Box(
         modifier =
@@ -234,13 +237,19 @@ private fun PlayerBanner(state: GameUiState, onToggleSound: () -> Unit) {
       role = stringResource(R.string.label_guesser),
       name = state.guesserName,
       alignment = Alignment.End,
+      modifier = Modifier.weight(1f),
     )
   }
 }
 
 @Composable
-private fun PlayerLabel(role: String, name: String, alignment: Alignment.Horizontal) {
-  Column(horizontalAlignment = alignment) {
+private fun PlayerLabel(
+  role: String,
+  name: String,
+  alignment: Alignment.Horizontal,
+  modifier: Modifier = Modifier,
+) {
+  Column(modifier = modifier, horizontalAlignment = alignment) {
     Text(
       text = role,
       fontSize = 11.sp,

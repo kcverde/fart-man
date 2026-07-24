@@ -4,6 +4,7 @@ import com.kcverde.fartman.data.GameDao
 import com.kcverde.fartman.data.GameRecord
 import com.kcverde.fartman.ui.SoundPlayer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestDispatcher
@@ -65,8 +66,16 @@ class RecordingSoundPlayer : SoundPlayer {
   }
 }
 
-/** Swaps `Dispatchers.Main` for a test dispatcher so `viewModelScope` works. */
-class MainDispatcherRule(private val dispatcher: TestDispatcher = UnconfinedTestDispatcher()) :
+/**
+ * Swaps `Dispatchers.Main` for a test dispatcher so `viewModelScope` works.
+ *
+ * Build the ViewModel under test in `@Before`, not in a field initializer:
+ * fields are constructed before JUnit applies rules, so a ViewModel created
+ * there captures the real (unusable) main dispatcher and silently drops
+ * everything launched into `viewModelScope`.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class MainDispatcherRule(val dispatcher: TestDispatcher = UnconfinedTestDispatcher()) :
   TestWatcher() {
   override fun starting(description: Description) {
     Dispatchers.setMain(dispatcher)

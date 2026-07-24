@@ -45,9 +45,9 @@ fun SecretWordRow(word: String, guessedLetters: Set<Char>, modifier: Modifier = 
   val blank = stringResource(R.string.blank_letter)
   val spelled =
     remember(word, guessedLetters, blank) {
-      word.joinToString(separator = " ") { char ->
-        if (char in guessedLetters) char.toString() else blank
-      }
+      word
+        .map { char -> if (char in guessedLetters) char.toString() else blank }
+        .joinToString(separator = " ")
     }
   val spokenProgress = stringResource(R.string.secret_word_progress, spelled)
 
@@ -56,8 +56,10 @@ fun SecretWordRow(word: String, guessedLetters: Set<Char>, modifier: Modifier = 
       modifier.fillMaxWidth().testTag(SECRET_WORD_TAG).semantics {
         contentDescription = spokenProgress
       },
-    horizontalArrangement = Arrangement.Center,
-    verticalArrangement = Arrangement.Center,
+    // Spacing matters here: without a gap the underlines of adjacent letters
+    // butt together and read as one long bar instead of separate slots.
+    horizontalArrangement = Arrangement.spacedBy(SLOT_GAP, Alignment.CenterHorizontally),
+    verticalArrangement = Arrangement.spacedBy(SLOT_GAP),
   ) {
     word.forEach { char ->
       val revealed = char in guessedLetters
@@ -87,5 +89,6 @@ fun SecretWordRow(word: String, guessedLetters: Set<Char>, modifier: Modifier = 
   }
 }
 
-private val SLOT_WIDTH = 28.dp
+private val SLOT_WIDTH = 26.dp
 private val SLOT_HEIGHT = 46.dp
+private val SLOT_GAP = 8.dp
