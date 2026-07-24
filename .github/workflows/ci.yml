@@ -18,18 +18,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # AGP 9.x needs 17 or newer; 21 matches the JDK bundled with Android
       # Studio, which is what the project is built with locally.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
       # Caches ~/.gradle and checks the wrapper jar against Gradle's published
       # checksums, so a tampered wrapper fails the build rather than running.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
 
@@ -48,7 +48,7 @@ jobs:
       # Roborazzi output holds the actual/expected/diff images.
       - name: Upload reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
