@@ -178,17 +178,20 @@ survive process death). If you need to repeat it:
 As of 2026-07-25, unstarted, roughly in the order last recommended:
 
 1. **Spotless + ktfmt and `.editorconfig`** — the style above, enforced.
-2. **Java 11 → 17** in `compileOptions` plus the matching Kotlin `jvmTarget`.
-   `compileOptions` still says 11 while the README asks for JDK 17.
-3. **`targetSdk` 36 → 37** — baselined in lint. Needs a pass on the emulator to
+2. **`targetSdk` 36 → 37** — baselined in lint. Needs a pass on the emulator to
    confirm the new platform behaviours do not regress anything.
-4. **Release signing** — keystore plus a gitignored `keystore.properties` or env
+3. **Release signing** — keystore plus a gitignored `keystore.properties` or env
    vars. Only matters once the app is distributed.
-5. **`createComposeRule` → v2 API** — swaps `UnconfinedTestDispatcher` for
+4. **`createComposeRule` → v2 API** — swaps `UnconfinedTestDispatcher` for
    `StandardTestDispatcher` and may need explicit synchronization added to the
    screenshot tests.
 
 Android Lint landed 2026-07-24; see the Lint section above.
+
+Java 17 landed 2026-07-24. Only `compileOptions` needed changing — AGP derives
+the Kotlin `jvmTarget` from it, so the separate `jvmTarget` this backlog used to
+call for was never necessary. Bytecode went from major 55 to 61, which is the
+cheap way to confirm it took effect.
 
 **Renovate was considered on 2026-07-24 and declined.** Not an oversight, and
 not worth re-proposing. The app requests no permissions at all — no internet,
