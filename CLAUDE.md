@@ -113,9 +113,12 @@ run is fast — about fifteen seconds once the release variant is compiled.
 Dependency-freshness checks (`NewerVersionAvailable`, `GradleDependency`,
 `AndroidGradlePluginVersion`) are **disabled**, not baselined. They resolve the
 latest version over the network, so with `warningsAsErrors` they would turn CI
-red on the day a new Kotlin ships without anyone having committed anything.
-Renovate is meant to own that instead. A baseline could not hold them either —
-it matches on message text, which changes with every new version.
+red on the day a new Kotlin ships without anyone having committed anything. A
+baseline could not hold them either — it matches on message text, which changes
+with every new version.
+
+Nothing automated watches dependency freshness as a result; see the note on
+Renovate below.
 
 [app/lint-baseline.xml](app/lint-baseline.xml) holds eight deliberately
 deferred findings, each explained in a comment at the top of the file. Adding to
@@ -174,20 +177,26 @@ survive process death). If you need to repeat it:
 
 As of 2026-07-25, unstarted, roughly in the order last recommended:
 
-1. **Renovate** — would have caught both stale-pin episodes unprompted, and
-   lint's dependency checks are switched off on the assumption it will.
-2. **Spotless + ktfmt and `.editorconfig`** — the style above, enforced.
-3. **Java 11 → 17** in `compileOptions` plus the matching Kotlin `jvmTarget`.
+1. **Spotless + ktfmt and `.editorconfig`** — the style above, enforced.
+2. **Java 11 → 17** in `compileOptions` plus the matching Kotlin `jvmTarget`.
    `compileOptions` still says 11 while the README asks for JDK 17.
-4. **`targetSdk` 36 → 37** — baselined in lint. Needs a pass on the emulator to
+3. **`targetSdk` 36 → 37** — baselined in lint. Needs a pass on the emulator to
    confirm the new platform behaviours do not regress anything.
-5. **Release signing** — keystore plus a gitignored `keystore.properties` or env
+4. **Release signing** — keystore plus a gitignored `keystore.properties` or env
    vars. Only matters once the app is distributed.
-6. **`createComposeRule` → v2 API** — swaps `UnconfinedTestDispatcher` for
+5. **`createComposeRule` → v2 API** — swaps `UnconfinedTestDispatcher` for
    `StandardTestDispatcher` and may need explicit synchronization added to the
    screenshot tests.
 
 Android Lint landed 2026-07-24; see the Lint section above.
+
+**Renovate was considered on 2026-07-24 and declined.** Not an oversight, and
+not worth re-proposing. The app requests no permissions at all — no internet,
+no storage, no user data — so the usual dependency-patching argument does not
+apply, and there are no users for a stale library to affect. The user would
+rather be asked than pinged: check for outdated dependencies when they ask, and
+otherwise leave it alone. Two stale-pin episodes are the argument on the other
+side, so mention drift if you happen to notice it while doing something else.
 
 The user's stated end goal is gameplay work; platform items are groundwork, so
 prefer finishing them cheaply over gold-plating them.
