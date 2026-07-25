@@ -31,7 +31,7 @@ class FartManViewModel(
   private val repository: GameRepository,
   private val settings: SettingsStore,
   private val soundPlayer: SoundPlayer,
-  private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
+  private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow(savedStateHandle.restoreRound())

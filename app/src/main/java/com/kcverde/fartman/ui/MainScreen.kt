@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kcverde.fartman.game.GamePhase
@@ -79,7 +80,9 @@ fun MainScreen(viewModel: FartManViewModel, modifier: Modifier = Modifier) {
       modifier =
         Modifier.fillMaxSize()
           .windowInsetsPadding(WindowInsets.safeDrawing)
-          .offset(x = shakeOffset.value.dp)
+          // Lambda overload: the shake runs at 60fps, and reading the Animatable
+          // here rather than in composition keeps it to a relayout per frame.
+          .offset { IntOffset(shakeOffset.value.dp.roundToPx(), 0) }
     ) {
       AnimatedContent(
         targetState = state.phase,

@@ -32,6 +32,24 @@ android {
 
   buildFeatures { compose = true }
 
+  lint {
+    // A warning nobody has to act on is a warning nobody reads, so every
+    // finding either gets fixed or gets an entry in the baseline with a reason.
+    warningsAsErrors = true
+    abortOnError = true
+
+    // Dependency freshness is Renovate's job. These three resolve the latest
+    // version over the network, so leaving them on would turn CI red the day a
+    // new Kotlin ships, without a commit having touched anything.
+    disable += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable")
+
+    baseline = file("lint-baseline.xml")
+
+    // The HTML report is the one worth reading; CI uploads it on failure.
+    htmlReport = true
+    sarifReport = true
+  }
+
   // Robolectric needs real resources to inflate the app's theme and drawables.
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }

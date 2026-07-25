@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.3.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.1)" variant="all" version="9.3.1">
+
+<!--
+  Everything in here is deferred on purpose. Two entries only:
+
+  OldTargetApi (1) - targetSdk is 36 against compileSdk 37.1. Raising it opts
+  the app into new OS behaviours and needs a pass on a device to confirm
+  nothing regressed, so it is its own task rather than a lint cleanup.
+
+  IconLocation (7) - the Fart Man art is single-source PNG in res/drawable
+  with no density buckets. Fixing it means regenerating every frame at five
+  densities; that is asset work, and Compose scales them acceptably today.
+
+  Do not add to this file to make a build go green. Fix the finding, or decide
+  it is deferred and write down why here.
+-->
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="    targetSdk = 36"
+        errorLine2="    ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="15"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_1.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_1.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_2.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_2.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_3.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_3.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_4.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_4.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_5.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_5.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fart_state_6.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fart_state_6.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/fartman_icon.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/fartman_icon.png"/>
+    </issue>
+
+</issues>
