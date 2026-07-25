@@ -58,7 +58,6 @@
     <string name="give_up_cancel">Keep guessing</string>
     <string name="fart_man_stage">Fart Man, bloat stage %1$d of %2$d</string>
     <string name="fart_man_exploded">Fart Man has exploded into a gas cloud</string>
-    <string name="keyboard_label">Letter keyboard</string>
     <string name="key_unguessed">Guess the letter %1$s</string>
     <string name="key_correct">%1$s, correct</string>
     <string name="key_incorrect">%1$s, not in the word</string>

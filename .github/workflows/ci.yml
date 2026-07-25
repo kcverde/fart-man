@@ -39,6 +39,12 @@ jobs:
       - name: Unit tests and screenshot verification
         run: ./gradlew verifyRoborazziDebug
 
+      # Nothing else here inspects the code without running it. Release variant
+      # because that is the one that ships. Warnings fail the build; the eight
+      # deliberate exceptions are in app/lint-baseline.xml with reasons.
+      - name: Lint
+        run: ./gradlew lintRelease
+
       # R8 and resource shrinking only run for release, so this is the only
       # thing that would catch a minification break.
       - name: Release build
@@ -54,4 +60,5 @@ jobs:
           path: |
             app/build/reports/tests/
             app/build/outputs/roborazzi/
+            app/build/reports/lint-results-release.html
           retention-days: 7

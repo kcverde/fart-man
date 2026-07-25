@@ -40,6 +40,7 @@ only when a change actually needs on-device verification.
 
 ```bash
 ./gradlew verifyRoborazziDebug   # the whole JVM suite, including screenshot diffs
+./gradlew lintRelease            # static analysis; warnings fail the build
 ./gradlew assembleRelease        # the only thing that exercises R8
 ```
 
@@ -103,11 +104,30 @@ Fart Man bobs on an infinite transition that never lets the test clock go idle,
 which is why `ScreenshotTest` sets `mainClock.autoAdvance = false` and advances
 a fixed 500 ms; don't remove that.
 
+## Lint
+
+The `lint {}` block in [app/build.gradle.kts](app/build.gradle.kts) sets
+`warningsAsErrors` and `abortOnError`, so any new finding fails the build. The
+run is fast — about fifteen seconds once the release variant is compiled.
+
+Dependency-freshness checks (`NewerVersionAvailable`, `GradleDependency`,
+`AndroidGradlePluginVersion`) are **disabled**, not baselined. They resolve the
+latest version over the network, so with `warningsAsErrors` they would turn CI
+red on the day a new Kotlin ships without anyone having committed anything.
+Renovate is meant to own that instead. A baseline could not hold them either —
+it matches on message text, which changes with every new version.
+
+[app/lint-baseline.xml](app/lint-baseline.xml) holds eight deliberately
+deferred findings, each explained in a comment at the top of the file. Adding to
+it to make a build go green defeats the point; fix the finding or write down why
+it is deferred.
+
 ## CI
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push to
-`main` and every PR: `verifyRoborazziDebug`, then `assembleRelease`, uploading
-the test and Roborazzi reports when something fails. It reports status only —
+`main` and every PR: `verifyRoborazziDebug`, then `lintRelease`, then
+`assembleRelease`, uploading the test, Roborazzi, and lint reports when
+something fails. It reports status only —
 there is no branch protection gating merges, by the user's choice.
 
 Action versions are pinned to majors and were all several majors stale on the
@@ -154,18 +174,20 @@ survive process death). If you need to repeat it:
 
 As of 2026-07-25, unstarted, roughly in the order last recommended:
 
-1. **Android Lint** — no static analysis runs today. Run `lintRelease`, fix what
-   is real, add a `lint {}` block, baseline only what is consciously deferred,
-   add the step to CI.
-2. **Renovate** — would have caught both stale-pin episodes unprompted.
-3. **Spotless + ktfmt and `.editorconfig`** — the style above, enforced.
-4. **Java 11 → 17** in `compileOptions` plus the matching Kotlin `jvmTarget`.
+1. **Renovate** — would have caught both stale-pin episodes unprompted, and
+   lint's dependency checks are switched off on the assumption it will.
+2. **Spotless + ktfmt and `.editorconfig`** — the style above, enforced.
+3. **Java 11 → 17** in `compileOptions` plus the matching Kotlin `jvmTarget`.
    `compileOptions` still says 11 while the README asks for JDK 17.
+4. **`targetSdk` 36 → 37** — baselined in lint. Needs a pass on the emulator to
+   confirm the new platform behaviours do not regress anything.
 5. **Release signing** — keystore plus a gitignored `keystore.properties` or env
    vars. Only matters once the app is distributed.
 6. **`createComposeRule` → v2 API** — swaps `UnconfinedTestDispatcher` for
    `StandardTestDispatcher` and may need explicit synchronization added to the
    screenshot tests.
+
+Android Lint landed 2026-07-24; see the Lint section above.
 
 The user's stated end goal is gameplay work; platform items are groundwork, so
 prefer finishing them cheaply over gold-plating them.
