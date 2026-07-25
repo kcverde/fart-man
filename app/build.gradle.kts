@@ -43,11 +43,9 @@ android {
     // new Kotlin ships, without a commit having touched anything.
     disable += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable")
 
+    // Deferred findings live here with a reason each. AGP generates the HTML
+    // and SARIF reports unconditionally, so there is nothing to switch on.
     baseline = file("lint-baseline.xml")
-
-    // The HTML report is the one worth reading; CI uploads it on failure.
-    htmlReport = true
-    sarifReport = true
   }
 
   // Robolectric needs real resources to inflate the app's theme and drawables.
