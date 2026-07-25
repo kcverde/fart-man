@@ -31,6 +31,12 @@ Android Studio; the Gradle wrapper pins Gradle 9.5.0 to match AGP 9.3.1.
 Or open the project in Android Studio and run the `app` configuration. There is
 no API key, `.env` file, or signing setup to arrange first.
 
+Every screen has a Compose `@Preview` in
+[app/src/debug/java/com/kcverde/fartman/ui/preview/](app/src/debug/java/com/kcverde/fartman/ui/preview/),
+in light and dark on a Pixel 8. They are the quickest way to iterate on
+anything visual. Being in the `debug` source set keeps them out of the release
+APK.
+
 ## Testing
 
 Everything runs on the JVM — there is no `androidTest` source set.
