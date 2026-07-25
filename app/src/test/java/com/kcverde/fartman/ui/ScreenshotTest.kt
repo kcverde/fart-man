@@ -10,9 +10,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.kcverde.fartman.data.GameRecord
 import com.kcverde.fartman.game.GamePhase
-import com.kcverde.fartman.game.GameUiState
+import com.kcverde.fartman.ui.preview.MID_GAME
+import com.kcverde.fartman.ui.preview.SAMPLE_HISTORY
+import com.kcverde.fartman.ui.preview.SETUP_ROUND
 import com.kcverde.fartman.ui.screens.ActiveGameScreen
 import com.kcverde.fartman.ui.screens.GameOverScreen
 import com.kcverde.fartman.ui.screens.PassingScreen
@@ -34,6 +35,9 @@ import org.robolectric.annotation.GraphicsMode
  *
  * Record with `./gradlew recordRoborazziDebug`, check with
  * `./gradlew verifyRoborazziDebug`.
+ *
+ * The sample rounds come from the debug source set, so these goldens and the
+ * Android Studio previews render the same states.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -95,7 +99,7 @@ class ScreenshotTest {
   @Composable
   private fun Setup() {
     SetupScreen(
-      state = GameUiState(creatorName = "Ada", guesserName = "Bob", secretWord = "METHANE"),
+      state = SETUP_ROUND,
       history = SAMPLE_HISTORY,
       onCreatorNameChange = {},
       onGuesserNameChange = {},
@@ -130,41 +134,5 @@ class ScreenshotTest {
 
   private companion object {
     const val SETTLE_MILLIS = 500L
-
-    val MID_GAME =
-      GameUiState(
-        phase = GamePhase.ACTIVE,
-        creatorName = "Ada",
-        guesserName = "Bob",
-        secretWord = "METHANE",
-        hint = "Swamp gas",
-        // E, A and T are hits; Z and Q are the two misses.
-        guessedLetters = setOf('E', 'A', 'T', 'Z', 'Q'),
-        incorrectCount = 2,
-      )
-
-    val SAMPLE_HISTORY =
-      listOf(
-        GameRecord(
-          id = 1,
-          creatorName = "Ada",
-          guesserName = "Bob",
-          secretWord = "METHANE",
-          isWin = true,
-          incorrectGuesses = 2,
-          hintString = "Swamp gas",
-          timestamp = 1_700_000_000_000L,
-        ),
-        GameRecord(
-          id = 2,
-          creatorName = "Bob",
-          guesserName = "Ada",
-          secretWord = "SULFUR",
-          isWin = false,
-          incorrectGuesses = 6,
-          hintString = "",
-          timestamp = 1_700_003_600_000L,
-        ),
-      )
   }
 }

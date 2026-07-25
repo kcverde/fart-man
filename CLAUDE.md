@@ -50,6 +50,22 @@ there is no `androidTest` source set and nothing here needs a device to test.
 
 Cold builds take roughly four minutes, locally and on CI alike.
 
+## Day-to-day loop
+
+Three tiers. Reach for the cheapest one that can answer the question at hand.
+
+1. **Compose previews in Android Studio** — seconds. Layout, spacing, colour,
+   dark mode. They live in `app/src/debug/java/com/kcverde/fartman/ui/preview/`
+   and render the same sample rounds as the goldens; see Screenshot tests below.
+2. **`./gradlew verifyRoborazziDebug`** — about a minute warm. Game rules,
+   ViewModel behaviour, visual regressions. This is the gate: it is what CI runs
+   and the one command worth running before pushing.
+3. **The `fartman` emulator** — minutes. Only for what a JVM cannot show: sound,
+   haptics, the real IME, process death. See Verifying on the emulator below.
+
+A preview only ever shows you something; it never fails a build. Tier 2 stays
+the thing that actually catches a regression.
+
 ## Conventions
 
 **Comments explain why, never what.** Every comment in this codebase justifies a
@@ -104,11 +120,21 @@ Fart Man bobs on an infinite transition that never lets the test clock go idle,
 which is why `ScreenshotTest` sets `mainClock.autoAdvance = false` and advances
 a fixed 500 ms; don't remove that.
 
+The sample rounds (`SETUP_ROUND`, `MID_GAME`, `SAMPLE_HISTORY`) live in
+`app/src/debug/java/.../ui/preview/PreviewFixtures.kt`, not in the test, so the
+previews and the goldens render the same states. The debug variant's unit tests
+compile against the debug source set, which is what makes that work. Add a new
+state there rather than inlining one in either place.
+
 ## Lint
 
 The `lint {}` block in [app/build.gradle.kts](app/build.gradle.kts) sets
 `warningsAsErrors` and `abortOnError`, so any new finding fails the build. The
 run is fast — about fifteen seconds once the release variant is compiled.
+
+It runs on the release variant, so nothing in `app/src/debug/` is linted. That
+is the trade for keeping the previews out of the shipped APK, and it is why
+preview code is not held to the baseline.
 
 Dependency-freshness checks (`NewerVersionAvailable`, `GradleDependency`,
 `AndroidGradlePluginVersion`) are **disabled**, not baselined. They resolve the
