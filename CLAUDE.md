@@ -6,6 +6,19 @@ laid out; this file covers how to work on it.
 
 Public repo: `kcverde/fart-man` on the user's personal GitHub.
 
+## Working with the user
+
+They are learning git, GitHub, and development process, and want to watch it
+happen rather than have it done invisibly.
+
+- Say what a command does and why, in a sentence or two, before running it.
+- Name a concept the first time it comes up, then move on. Don't re-teach it.
+- Stay brief. They will ask for more when they want it, and a wall of text
+  costs them more than a gap does.
+- Flag when a step is load-bearing versus ceremony — a PR on a solo docs change
+  is practice, not review. Telling those apart is part of what they're after.
+- Recommend, then wait. Don't bundle steps opaquely or run ahead.
+
 ## Environment
 
 The shell does not inherit a JDK or the Android platform tools, and environment
